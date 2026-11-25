@@ -213,12 +213,14 @@
         </div>
       </div>
       <div class="panel">
-        <h3>進度管理</h3>
+        <h3>進度管理與永久備份</h3>
+        <p style="font-size:12px; color:var(--sub); margin:0 0 8px;">防清除機制：建議每玩完一個 Stage，點「匯出存檔碼」並貼入 iPhone 備忘錄永久保存。</p>
+        <div class="row" style="margin-bottom:8px;">
+          <button class="choice-btn" style="flex:1; text-align:center;" onclick="exportSave()">📤 匯出存檔碼</button>
+          <button class="choice-btn" style="flex:1; text-align:center;" onclick="importSave()">📥 匯入存檔碼</button>
+        </div>
         <button class="choice-btn choice-d" style="width:100%; text-align:center;" onclick="resetGame()">清除目前進度並重新開局</button>
       </div>
-    </div>
-    <button class="primary" style="width:100%;" onclick="toggleModal('settingsModal', false)">儲存並關閉</button>
-  </div>
 
 <script>
 // 【提示】你隨時可以把這裡替換為你最完整的原版指令集，只要保留最下方 [DATA] 協議即可
@@ -673,6 +675,21 @@ function switchTab(n) {
 function saveSettings() {
   localStorage.setItem('hk_or_key', document.getElementById('apiKeyInput').value.trim());
   localStorage.setItem('hk_or_model', document.getElementById('modelSelect').value);
+}
+  function exportSave() {
+  navigator.clipboard.writeText(JSON.stringify(state));
+  alert("✅ 已複製整份存檔碼！請貼上保存。");
+}
+function importSave() {
+  const code = prompt("請貼上你之前保存在備忘錄裡的存檔碼：");
+  if (!code) return;
+  try {
+    state = JSON.parse(code);
+    render();
+    alert("✅ 存檔已成功還原！");
+  } catch (e) {
+    alert("❌ 存檔碼格式不完整，請確認是否有漏複製頭尾字元。");
+  }
 }
 function resetGame() {
   if (confirm("確定要清除目前進度並重新開局嗎？")) {
