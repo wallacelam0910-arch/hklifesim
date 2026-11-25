@@ -171,6 +171,8 @@
       <div class="panel">
         <h3>創建你的香港人生角色</h3>
         <div style="display:flex; flex-direction:column; gap:8px;">
+          <textarea id="cFreeText" rows="5" placeholder="【自由描述模式】直接用自然語言描述主角出身、性格、家庭與世界觀（例如：1999年出生的屋邨單親少女，母親在茶餐廳打工，天生體弱但性格倔強...）。若填寫此欄，下方細項可留空。"></textarea>
+          <div style="font-size:12px; color:var(--sub); text-align:center; margin:4px 0;">— 或者填寫下方分項設定 —</div>
           <input id="cName" type="text" placeholder="姓名（留空則隨機生成地道港式名字）" />
           <div class="row">
             <select id="cGender"><option value="男">性別：男</option><option value="女">性別：女</option><option value="其他">性別：其他</option></select>
@@ -547,14 +549,22 @@ function quickStartRandom() {
 }
 
 function submitCustomCharacter() {
-  const name = document.getElementById('cName').value.trim() || "隨機生成";
-  const gender = document.getElementById('cGender').value;
-  const year = document.getElementById('cYear').value.trim() || "1998";
-  const bg = document.getElementById('cBg').value.trim() || "九龍區普通屋邨草根家庭";
-  const gene = document.getElementById('cGene').value.trim() || "普通體質，無特殊遺傳病";
-  const fam = document.getElementById('cFamily').value.trim() || "父母務實平淡";
-  const fan = document.getElementById('cFantasy').value.trim();
-  const cmd = `創建角色：姓名「${name}」，性別「${gender}」，${year}年出生，家庭背景「${bg}」，家族遺傳「${gene}」，家庭氛圍「${fam}」${fan ? '，世界觀／輕奇幻設定：「' + fan + '」' : '（純寫實設定）'}。請輸出 Stage 1 第壹幕序幕，並接續 Stage 2 第壹幕與選項。`;
+  const freeText = document.getElementById('cFreeText').value.trim();
+  let cmd = "";
+
+  if (freeText) {
+    cmd = `創建角色（玩家自由描述設定）：\n${freeText}\n\n請根據以上自然語言描述自動補完合理的細節與初始屬性，輸出 Stage 1 第壹幕序幕，並接續 Stage 2 第壹幕與選項。`;
+  } else {
+    const name = document.getElementById('cName').value.trim() || "隨機生成";
+    const gender = document.getElementById('cGender').value;
+    const year = document.getElementById('cYear').value.trim() || "1998";
+    const bg = document.getElementById('cBg').value.trim() || "九龍區普通屋邨草根家庭";
+    const gene = document.getElementById('cGene').value.trim() || "普通體質，無特殊遺傳病";
+    const fam = document.getElementById('cFamily').value.trim() || "父母務實平淡";
+    const fan = document.getElementById('cFantasy').value.trim();
+    cmd = `創建角色：姓名「${name}」，性別「${gender}」，${year}年出生，家庭背景「${bg}」，家族遺傳「${gene}」，家庭氛圍「${fam}」${fan ? '，世界觀／輕奇幻設定：「' + fan + '」' : '（純寫實設定）'}。請輸出 Stage 1 第壹幕序幕，並接續 Stage 2 第壹幕與選項。`;
+  }
+
   toggleModal('creatorModal', false);
   sendCommand(cmd);
 }
