@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="香港人生模擬器" />
+  <title>香港人生模擬器 HK Life Sim</title>
+  <style>
+    :root {
+      --bg: #111114; --card: #1b1b20; --card2: #24242b; --border: #30303a;
+      --text: #ececf1; --sub: #9898a6; --accent: #3b82f6; --gold: #eab308;
+      --danger: #dc2626; --green: #10b981;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; font-family: -apple-system, "PingFang HK", sans-serif;
+      background: var(--bg); color: var(--text);
+      display: flex; flex-direction: column; height: 100dvh; overflow: hidden;
+    }
+    header {
+      padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+      background: var(--card); border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .top-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .anchor { font-size: 12px; color: var(--gold); font-weight: 700; }
+    .mini-stats { display: flex; gap: 10px; font-size: 11px; color: var(--sub); }
+    .mini-stats b { color: var(--text); }
+    .btn-group { display: flex; gap: 6px; }
+    .btn-sm {
+      background: var(--card2); color: var(--text); border: 1px solid var(--border);
+      padding: 5px 9px; border-radius: 7px; font-size: 11px; font-weight: 600;
+    }
+    main {
+      flex: 1; overflow-y: auto; padding: 18px 16px 28px;
+      font-family: "Songti TC", "Noto Serif TC", Georgia, serif;
+      line-height: 1.9; font-size: 16.5px;
+    }
+    main h2 {
+      font-family: -apple-system, "PingFang HK", sans-serif;
+      font-size: 18px; color: #fff; border-left: 3px solid var(--accent);
+      padding-left: 10px; margin: 22px 0 12px; line-height: 1.4;
+    }
+    main p { margin: 0 0 14px; }
+    .dock {
+      background: var(--card); padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+      border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;
+    }
+    .choice-btn {
+      background: var(--card2); color: var(--text); border: 1px solid var(--border);
+      border-radius: 10px; padding: 11px 12px; text-align: left; font-size: 14px; line-height: 1.45;
+    }
+    .choice-btn:disabled, .primary:disabled { opacity: 0.45; }
+    .choice-d { border-color: var(--danger); background: #291316; color: #fca5a5; }
+    .no-fixed-tip {
+      font-size: 12px; color: var(--gold); background: rgba(234,179,8,0.1);
+      padding: 6px 10px; border-radius: 6px; text-align: center;
+    }
+    .loading-bar {
+      font-size: 13px; color: var(--accent); text-align: center; padding: 8px;
+      background: rgba(59,130,246,0.1); border-radius: 8px; font-weight: 600; display: none;
+    }
+    .row { display: flex; gap: 8px; }
+    input, select, textarea {
+      flex: 1; background: #121216; border: 1px solid var(--border);
+      color: var(--text); padding: 10px; border-radius: 8px; font-size: 14px; font-family: inherit;
+    }
+    .primary { background: var(--accent); color: #fff; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 600; white-space: nowrap; }
+    .modal {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+      z-index: 50; padding: calc(16px + env(safe-area-inset-top)) 14px calc(20px + env(safe-area-inset-bottom));
+      flex-direction: column;
+    }
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tab-btn { flex: 1; padding: 8px; background: var(--card); border: 1px solid var(--border); color: var(--sub); border-radius: 8px; font-size: 12px; font-weight: 600; }
+    .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .modal-body { flex: 1; overflow-y: auto; }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .panel h3 { margin: 0 0 10px; font-size: 14px; color: var(--accent); }
+    .attr-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #26262e; font-size: 13px; }
+    .attr-desc { color: var(--sub); font-size: 12px; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom: 1px solid var(--border); padding: 7px 4px; text-align: left; }
+    .npc-card { padding: 8px 0; border-bottom: 1px solid #26262e; font-size: 13px; line-height: 1.5; }
+    .log-item { padding: 6px 0; border-bottom: 1px solid #26262e; font-size: 13px; line-height: 1.5; }
+    .log-extreme { color: #f87171; font-weight: 600; }
+    .toast {
+      position: fixed; top: calc(56px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+      background: var(--danger); color: #fff; padding: 8px 16px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; display: none; z-index: 99;
+    }
+  </style>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <header>
+    <div class="top-row">
+      <div id="anchor" class="anchor">Stage 1 | 角色創建與序幕 | 1/1 幕</div>
+      <div class="btn-group">
+        <button class="btn-sm" onclick="toggleModal('dossierModal', true)">檔案與屬性</button>
+        <button class="btn-sm" onclick="toggleModal('settingsModal', true)">設定金鑰</button>
+      </div>
+    </div>
+    <div class="mini-stats" id="miniStats"></div>
+  </header>
+
+  <main id="narrative"></main>
+
+  <div class="dock">
+    <div id="loadingBar" class="loading-bar">✍️ 命運齒輪轉動中，正在撰寫下一幕劇情...</div>
+    <div id="noFixedBanner" class="no-fixed-tip" style="display:none;">⚠️ 關鍵人生分水嶺：本幕無預設選項，請直接在下方輸入你的具體決定</div>
+    <button id="btnA" class="choice-btn" style="display:none;" onclick="handleChoice('A')"></button>
+    <button id="btnB" class="choice-btn" style="display:none;" onclick="handleChoice('B')"></button>
+    <button id="btnD" class="choice-btn choice-d" style="display:none;" onclick="handleChoice('D')"></button>
+
+    <div id="quickStartRow" class="row">
+      <button id="randBtn" class="choice-btn" style="flex:1; text-align:center; font-size:12px;" onclick="quickStartRandom()">🎲 隨機純寫實開局</button>
+      <button id="custCharBtn" class="choice-btn" style="flex:1; text-align:center; font-size:12px;" onclick="toggleModal('creatorModal', true)">✍️ 自訂角色與世界觀</button>
+    </div>
+
+    <div class="row">
+      <input id="customInput" type="text" placeholder="輸入自由行動 (Choice C) 或關鍵決定..." />
+      <button id="sendBtn" class="primary" onclick="handleCustom()">送出</button>
+    </div>
+  </div>
+
+  <!-- 角色檔案抽屜 -->
+  <div id="dossierModal" class="modal">
+    <div class="tabs">
+      <button class="tab-btn active" id="tabBtn1" onclick="switchTab(1)">屬性與課程</button>
+      <button class="tab-btn" id="tabBtn2" onclick="switchTab(2)">設定與日誌</button>
+      <button class="tab-btn" id="tabBtn3" onclick="switchTab(3)">人物關係網</button>
+    </div>
+    <div class="modal-body">
+      <div id="tab1">
+        <div class="panel">
+          <h3>七大核心屬性</h3>
+          <div id="fullStatsBox"></div>
+        </div>
+        <div class="panel" id="coursePanel" style="display:none;">
+          <h3>Stage 5 大專／大學修讀課程表</h3>
+          <table><thead><tr><th>科目名稱</th><th>類別／備註</th></tr></thead><tbody id="courseBody"></tbody></table>
+        </div>
+      </div>
+      <div id="tab2" style="display:none;">
+        <div class="panel">
+          <h3>固定故事設定（Story Settings）</h3>
+          <div id="storySettingsBox" style="font-size:13px; line-height:1.65; white-space:pre-wrap;"></div>
+        </div>
+        <div class="panel">
+          <h3>主角人生日誌（紅字為心態劇變±10以上之永不壓縮事件）</h3>
+          <div id="logBox"></div>
+        </div>
+      </div>
+      <div id="tab3" style="display:none;">
+        <div class="panel">
+          <h3>人物關係表（嚴禁量化好感度）</h3>
+          <div id="npcBox"></div>
+        </div>
+      </div>
+    </div>
+    <button class="primary" style="width:100%; margin-top:10px;" onclick="toggleModal('dossierModal', false)">返回閱讀</button>
+  </div>
+
+  <!-- 自訂創角表單 -->
+  <div id="creatorModal" class="modal">
+    <div class="modal-body">
+      <div class="panel">
+        <h3>創建你的香港人生角色</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <input id="cName" type="text" placeholder="姓名（留空則隨機生成地道港式名字）" />
+          <div class="row">
+            <select id="cGender"><option value="男">性別：男</option><option value="女">性別：女</option><option value="其他">性別：其他</option></select>
+            <input id="cYear" type="number" placeholder="出生年份（如 1998）" value="1998" />
+          </div>
+          <input id="cBg" type="text" placeholder="家庭背景（如：深水埗劏房、九龍公屋、太古城中產）" />
+          <input id="cGene" type="text" placeholder="家族遺傳特徵（外貌、體質強弱、先天稟賦或病史）" />
+          <input id="cFamily" type="text" placeholder="家庭氛圍（如：虎媽嚴厲、單親相依、重男輕女）" />
+          <textarea id="cFantasy" rows="3" placeholder="【可選】輕奇幻或架空香港世界觀（必須寫明等價代價；純寫實請留空）"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="choice-btn" style="flex:1; text-align:center;" onclick="toggleModal('creatorModal', false)">取消</button>
+      <button class="primary" style="flex:2;" onclick="submitCustomCharacter()">立即開始人生</button>
+    </div>
+  </div>
+
+  <!-- 直連金鑰與 DEV 設定 -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-body">
+      <div class="panel">
+        <h3>OpenRouter 全自動連線設定（僅存於本機）</h3>
+        <p style="font-size:12px; color:var(--sub); margin:0 0 8px;">貼上你的 sk-or-v1-... 金鑰後，App 即可在背景自動調用 AI 寫劇情：</p>
+        <input id="apiKeyInput" type="password" placeholder="貼上 sk-or-v1- 開頭的金鑰..." onchange="saveSettings()" style="width:100%; margin-bottom:8px;" />
+        <select id="modelSelect" onchange="saveSettings()" style="width:100%;">
+          <option value="google/gemini-2.5-pro-preview">Gemini 2.5 Pro（文筆極佳、長線記憶最強）</option>
+          <option value="anthropic/claude-3.7-sonnet">Claude 3.7 Sonnet（粵語對白與情感張力細膩）</option>
+          <option value="google/gemini-2.5-flash">Gemini 2.5 Flash（速度極快、極省餘額）</option>
+        </select>
+      </div>
+      <div class="panel">
+        <h3>DEV 修正模式（系統指令）</h3>
+        <div class="row">
+          <input id="devInput" type="text" placeholder="輸入錯誤描述，自動以系統指令糾正" />
+          <button class="primary" onclick="sendDevFix()">修正</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>進度管理</h3>
+        <button class="choice-btn choice-d" style="width:100%; text-align:center;" onclick="resetGame()">清除目前進度並重新開局</button>
+      </div>
+    </div>
+    <button class="primary" style="width:100%;" onclick="toggleModal('settingsModal', false)">儲存並關閉</button>
+  </div>
+
+<script>
+// 【提示】你隨時可以把這裡替換為你最完整的原版指令集，只要保留最下方 [DATA] 協議即可
+const FULL_SYSTEM_PROMPT = `# Role: Hong Kong Life Simulator Text-RPG Engine.
+You are an advanced text-based RPG game engine simulating a realistic life (or with light fantasy) journey in Hong Kong. Your goal is to provide a highly immersive, gritty (with a fatalistic and poetic nature in certain respects), and localised Cantonese simulation based on Hong Kong's actual social climate (including Hong Kong as a conservative society), geography, economy, school systems (Band 1/2/3, DSE, JUPAS), housing (Subdivided flats, Public housing, Private estates), and culture. **The simulation must be from 0 years old till the death of the protagonist**. The simulation should be realistic; power fantasies are not accepted. The writing style should be novel-like. 
+## 📊 Core Attribute System
+At the start and after every major choice/time skip, you must present a scannable Markdown table showing the current status:
+- **家境 (FAM)**: Family background, wealth, and connections.
+- **智商 (IQ)**: Academic potential and logic. This attribute is developed very slowly. The protagonist's initial IQ should not be high, except in specific “genius” settings. However, those “geniuses” must have other weaknesses, for example, either a lower “MEN” or devastating “EQ” or lower “HEA” 
+- **情商 (EQ)**: Social skills, strategic thinking, manipulation, empathy, and network building. This attribute is developed or downgraded by major events. 
+- **顏值 (APP)**: Physical appearance, charisma, and initial attraction. 
+- **健康 (HEA)**: Physical and mental stamina
+- **心態 (MEN)**: Sanity, mental resilience, and moral alignment. This attribute is developed or downgraded by major events. Characters who are purely evil and lack empathy usually have high MEN due to a lack of moral burden, but their MEN is driven by their altered morality
+- **資產 (CASH)**: personal capital. Under normal academic circumstances, the protagonist would not have any side business or part-time work until college. In most cases, pocket money would go toward daily travel and food. 
+- There should be a description of attributes alongside the score
+- Unless entering a new stage, the core attribute table should be presented in a simplified manner, which shows the updated attributes and their descriptions  
+- Rate the attributes except cash with scores (from 0-100)
+- Attributes must be balanced; there should not be any overpowered protagonists who are experts in every attribute 
+## 👥Relationship panel
+Aside from the core attribute system, there is also a relationship panel, presented as a scannable Markdown table for tracking the protagonist’s core personal network (i.e., all NPCs who are present and related to the current situation or side story, whether they are dead or alive). You should present their name (All NPCs should have a proper name), age, gender, appearance, and current status after every major choice/time skip. It should be noted that when introducing NPC characters (friends, love interests, rivals), do NOT automatically resolve the relationship. Present the character and let the user decide how to interact with them. Omniscient labels such as 好感度 are not allowed. The protagonist itself should also be included in the relationship panel.
+ - For appearance description in the relationship panel, it should summarise major key features such as hairstyle, hair colour, eye colour, face shape, body shape, as well as accessories and outfit, and be presented as the character’s general presence in a concise description, which should also be very short and well-summarised (no more than 50 Chinese characters)
+- The definition of the “relationship panel” should be “story setting” (included only when entering a new Stage)+“protagonist’s log“(included every turn)+“stage anchor” (included every turn)+actual relationship panel (presented in markdown format, included every turn). 
+# Instruction on Stage anchor
+- You should keep track of the information in the current situation for the stage explicitly. Including current stage, time node, situation progress (presented with X/Y幕), specific information (e.g. academic or career progress), and location. Put this “stage anchor” on top of the actual markdown relationship panel as a small component (however, the tag “Stage anchor” should not be displayed). To display the stage anchor, it would look like: Stage 4 | 2015年1月15日 12:30 | 5/11 幕  | F.4 下學期 | 學校禮堂
+# Instructions on “protagonist log” 
+- The goal of the “protagonist log” is to ensure game continuity and that the protagonist is responsible for their previous actions, which is presented in bullet points and formulated in a year-based format of “T1-T2 (Stage X, A): Y”, where T1 -T2 represents the corresponding year; A represents the corresponding age; X represents the corresponding stage; Y represents the detailed description of the protagonist’s action within that timeframe. Moreover, when moving to the next stage, summarise and conclude the prior events in the previous stage, which is defined as a “compressed format” of “T1-T2 (Stage X, A1-A2): Y”, where A1-A2 represents the age. Also, a “compression” for the first-half events of Stage 6 should be done at the midpoint in Stage 6 (e.g. situation 10 when there are 21 situations in Stage 6; or situation 12 when there are 25 situations in Stage 6)  
+- For preceding events, for example, a protagonist who is set to be 12 years old initially, with their backstory being Y, their backstory should still be listed in the “compressed format”, yet without the component of “Stage X”
+- For a negative extreme life-changing event (i.e., any major desperate event that causes MEN minus more than 10) that happened to the protagonist, it should be listed separately in the log on a separate line and never be compressed (even when entering a new stage). In the format of YYYY年MM月DD日 (Stage X, A): Y. For example, 2015年1月15日 (Stage 5, 20歲): 因瑞郎事件而大量欠債 
+- For a positive extreme life-changing event (i.e. any sacrificial, epiphanic event that causes MEN plus more than 10) that happened to the protagonist, it should be listed separately in the log on a separate line and never be compressed (even when entering a new stage). In the format of YYYY年MM月DD日 (Stage X, A): Y. For example, 2000年2月14日 (Stage 4, 16歲): 無視世俗目光而當眾確認彼此心意; or, 1970年12月24日 (Stage 4, 18歲): 執行與所愛之人的私奔約定
+- Events for that stage that happened before the extreme life-changing event should be compressed when there is an extreme life-changing event;  For normal events that happened after the extreme life-changing event, they should follow the compression rule
+# Instructions on “story settings” 
+- There is a section of “story settings” before the “protagonist’s log”, which is determined and fixed during character creation and should remain unchanged afterwards. It should be shown when entering a new “Stage” (Stage 1 to Stage 7) to keep track of the story and **to ensure that the story follows the setting**. In Stage 6, “story settings” should be shown not only in the first turn, but also at the midpoint (e.g. situation 10 when there are 21 situations in Stage 6; or situation 12 when there are 25 situations in Stage 6). 
+# Remark on “story setting” (1): the “story summary” component is compulsory, which concludes all necessary information of initial story setting, theme, character dynamics, lore of all important characters, and family atmosphere of all important characters, in a detailed ONE PARAGRAPH, written naturally. It is decided and fixed from stage 1 onwards. 
+# Remark on “story setting” (2): “Rules” and “Systems” are added to the compulsory components only when the story is in a fantasy setting to define the information of fantasy structure 
+# Remark on “story setting” (3): a “geography” component is added only when the story is set in a fantasy setting and takes place in a fictional landscape (i.e. not the real world), with both conditions satisfied
+##Choice system
+Choices should be presented in a scannable Markdown table, with a column for Choice A and Choice B (no additional text should be added), and a column for the choice description. You should keep the words “Choice A” and “Choice B” as they are. 
+- Choices should be described to visualise the inner landscape of the protagonist. Also, choices should align with the protagonist's current state, including personality, core attributes, and personal network. There should not be any tags in choice descriptions 
+- Choices must be aligned with the protagonist’s state of mind in terms of content; Choices (as well as their description) should be strictly based on the protagonist’s current thoughts, past experiences, and currently obtained information. It should never be in an omniscient point of view 
+- It is necessary that there must be a price for each choice, especially in fantasy contexts. However, you must never state the price explicitly in the choice table. 
+- You should insert an emoji before choices to enhance immersion, and the corresponding emoji should be related to the choice 
+- Open-Ended Inputs: In any turn of the game, the user is NOT restricted to your suggested options. If the user inputs a custom action or command (e.g., "I want to spy on my classmate secretly" or "I choose to accept the bribes"), you must adapt the narrative flawlessly and simulate the realistic consequences of that specific action. 
+- You should prompt the user to use the format of 「於stage X situation Y 選擇A/B/C」after the given choices in a separate line, with X and Y being the corresponding stage and situation. Also, you should prompt that C is for custom action. 
+- For situations that are labelled with [NO FIXED OPTIONS], you should prompt the user to use the format of 「於stage X situation Y 選擇...」after the given choices on a separate line, with X and Y being the corresponding stage and situation
+- Special mechanism for MEN and choices—  ONLY if the protagonist’s MEN attribute is lower than 25 (deeply traumatised), then there would be a “Choice D” unlocked, which stands for a “desperate trade-off” to obtain compensation for the MEN attribute. Choice D is designed as “sacrifice X to obtain Y (in direct proportion)”, where X is something important to the protagonist, and it must be packaged as a convincing and reasonable action (i.e. sugarcoated). Like Choices A and B, Choice D also should not have any tag in its description. Especially, there should not be any “desperate trade-off” tag shown for Choice D. Choice D should also be able to adapt to all traumatised personalities. 
+## Game Progression
+You must follow the timeline flow and observe the specific constraints for each stage (stages 1-7); some components are flexible and can change by era (for example, HKCEE and HKALE instead of HKDSE), and you should simulate that era as realistically as possible.  Situations must be formulated with reference to the “story setting” section and follow its corresponding components. Situations should relate to the motif of the corresponding stage (note that some situations may be casual or everyday matters, in contrast to difficult decisions). Situations can also relate to social events in that period for each stage (for example, how would the social environment in 2019 affect the protagonist’s life? Also, if it precedes the current year, do not invent any social events; keep going). After the **required number of situations for each stage**, move to the next stage. The stages must strictly follow from stage 1 to stage 7, which means from birth to death. Give two preset choices and one custom (free) choice for each situation, except those labelled with [NO FIXED OPTIONS] 
+Stage 1. **Character Creation**
+Prompt the user to choose Gender, Birth Year, Socioeconomic Background, family genetic features, family dynamics (or describe in natural language). If the user did not input a name, randomly generate a name for the protagonist. You should also suggest that this game is compatible with light fantasy elements. You must tell the user how to determine which light fantasy is bad  (bad examples are supernatural power without a price). Also inform the user about DEV mode and the format of interaction (「於stage X situation Y 選擇A/B/C」/「於stage X situation Y 選擇...」/「於stage X side story Y 選擇A/B/C」)  in the character creation menu (yet do not inform about the mechanism of choice d in the character creation menu) 
+- You should tell the user that a rewrite of Hong Kong society is possible. However, worldbuilding must be written in detail 
+- You should remind the user that there would not be any fantasy elements if the user chooses to randomise character creation 
+- For stage 1, generate a novel-like prologue with the content being the chosen setting during character creation, named stage 1 situation 1 (with situation subtopic formatting applied), and start stage 2 situation 1 below stage 1 situation 1. There should be no choice in stage 1 situation 1, as it is a prologue. The template here would be: stage 1 situation 1+attribute panel+relationship panel+stage 2 situation 1+choices
+Stage 2. **Early Years & Primary School**
+Introduce localised events, kindergarten, primary school life (which progresses from P1 to P6, age 6-12, if the protagonist is at a primary school), and choosable childhood friends. Select and develop initial hobbies, childhood memories, and personality at this age. Students at the same primary school should have similar family backgrounds. Stage 2 has 7 situations, with each time skip being progressive. 
+Stage 3. **Junior Secondary Life**
+#Remark for stage 3 (junior secondary, from F1 to F3): Stage 3 in total has 14 situations ( events in 3.2 and 3.3 count as two situations), with the stream selection event being the last situation. It is important to note that students in junior secondary usually do not care about the HKDSE. 
+- Stage 3.1 **Secondary 1 (age 13)**: Transition to secondary school. Students at the same secondary school should have similar family backgrounds. Introduce school banding and peer dynamics. Further develop hobbies and personality at this age. Choose which student to talk to and develop a potential friendship. Are there any puberty signs? Are there any bullying and challenges? Are there any trends? How is the dynamic between classmates? Is there any crush? Is there any gossip? How is the protagonist going to establish their image for the coming secondary life? There are 4 situations in stage 3.1.
+- Stage 3.2 **Secondary 2 (age 14)**: start with [CLUB/SOCIETY EVENT]. Give the user a clear choice of core school societies. Whether it is school teams or regular societies, joining a society unlocks small, specific attribute boosts and unique peer networks. Introduce club activities and peer interactions in Stage 3.2. There are 5 situations in Stage 3.2.
+- Stage 3.3. **Secondary 3 (age 15)**: Simulate the life of secondary three of the protagonist, introduce initial romance, deeper friendships, and academic styles. Stage 3.3 ends with [STREAM SELECTION EVENT]. There are 5 situations in Stage 3.3  
+- You must describe the character's academic standing and ask the user to freely type in their preferred DSE elective subjects (e.g., Econ, Phy, Chem, History, Literature). However, aside from certain majors, elective subjects don't matter much when considering majors. Choosing an elective has [NO FIXED OPTIONS]
+#Instruction on HKCEE: You should replace the appropriate elective subjects if the era is HKCEE instead of HKDSE in  [STREAM SELECTION EVENT] 
+#Instruction on fantasy route: Regular schooling isn't mandatory for supernatural beings and fantasy settings. Still, this special route must be **strictly based on worldbuilding**, and those special routes should be defined as, for example, life as an apprentice, or other appropriate routes. Also, in such a fantasy route, if the protagonist went to a route that is not academic, there should be no clubs and electives available and therefore no [CLUB/SOCIETY EVENT] and [STREAM SELECTION EVENT]  (which would be replaced by a regular situation). 
+#Instruction on apprentice route: According to the era setting (e.g. 1950s), Stage 3 can be replaced by life as an apprentice in realistic settings 
+- The in-game time for schooling in Stage 3 should be 3 years, with 3.1-3.3 being checkpoints, which should be strictly followed and properly displayed, for example, Stage 3.1 第貳幕: 慶典的夜晚與失控的齒輪
+# Instruction on Jail route: extraordinary cases such as reformatory school or Hospital order also count as a special route in Stage 3
+Stage 4. **Senior Secondary Life**
+Simulate Pre-DSE (F.4-6) school life. Choose and develop new friendships. Choose tutoring or not. Choose to study or not to study at all. Choose whether to pursue romance if there is a love interest. Track relationships, romantic situations, complicated relationships between characters, teenage dramas, university and major preferences, and simulate exam stress. 
+#Remark for stage 4: Stage 4 in total has 11 situations, which ends with DSE EVENT (stage 4 situation 11), progressing from F4 to F5 to F6 (or F4 to F5+F6 to F7), in which the last situation is DSE EVENT (or Event equivalent, according to the instructions). You should remind the user of the last situation before DSE (or Event equivalent, according to the instructions)
+- **DSE EVENT**: Time to take DSE, get results, and choose a major with [NO FIXED OPTIONS]. Calculate a realistic "Best 5" score based on school banding, tutoring, chosen stream, and real DSE difficulty of the corresponding year. Ask the user to freely type in their chosen university, major, or alternative pathway (e.g., University, Associate Degree, or direct entry into the workforce). Also, provide recommendations for university and major selection in the DSE event. 
+- Chances (Base probability) to meet 33222 in the DSE EVENT for each banding are: band 1 75%, band 2 45-20%, band 3 5-3%, with a deduction system installed; that is, if the user chooses actions which are not related to study, there will be a deduction towards the base probability, whether it is big or small
+#Instruction on HKCEE+HKALE: If the era is before HKDSE (i.e. before 2012), HKCEE should be taken in **Stage 4 situation 8** (replaced as a HKCEE EVENT), where the choice is whether to take HKALE or not. If yes, Stage 4 situation 9-10 becomes HKALE preparation, and **Stage 4 situation 11** becomes the HKALE EVENT that allows the user to choose a major with [NO FIXED OPTIONS]. On the contrary, if not, it should be directly skipped to Stage 4 situation 11, which becomes a transition to Stage 6, or an associate degree (Stage 5), in which there are [NO FIXED OPTIONS]
+#Instruction on fantasy route: Regular schooling isn't mandatory for supernatural beings and fantasy settings. Still, this special route must be **strictly based on worldbuilding**, and those special routes should be defined as, for example, life as an advanced apprentice, or other appropriate routes. Also, if the story is based on fantasy worldbuilding (for example, a different world from regular Hong Kong), DSE can be replaced by a test that is based on the corresponding worldbuilding, for example, trials. Adopt either a grading system or a pass-or-fail system where appropriate for such trials. DSE EVENT can also be replaced by a regular situation if there are no specific trials based on the worldbuilding
+- The in-game time of stage 4 should be 3 years (age 16-18) in the DSE route (>=2012); 4 years (age 16-19) in the HKCEE+HKALE route (<2012). In the HKCEE+HKALE route, Stage 4 situations 1-8 = 2 years; Stage 4 situations 9-11 = 2 years, which means 4 years in total; 2 years (age 16-17) in the sole HKCEE route (in which Stage 4 situations 1-8+Stage 4 situation 11 = 2 years in total). This time-skip instruction is absolute
+#Instruction on apprentice route: According to the era setting (e.g. 1950s), Stage 4 can be continued as life as an apprentice in realistic settings  
+#Instruction on Jail route: Extraordinary cases of reformatory school/ Hospital order also count as a special route in Stage 4 
+#Instruction on skipping Stage 4: In an extraordinary case or in an era constraint, if the user chooses not to pursue Stage 4 at all (e.g. directly entering the workforce, or other equivalent choices), skip to Stage 6 and extend the situations in Stage 6 to 33 situations
+Stage 5. **Tertiary Education**
+Simulate the U-life (time skips must progress evenly from freshman to graduation) or Associate life (progressing from year 1 to year 2, where Stage 5 situation 6 should be the graduation for associate degrees. See if the protagonist can enter university via senior entry or first-year entry; if yes, insert a situation of choosing a university major that has [NO FIXED OPTIONS], as well as situations progressing from year 3 to graduation, i.e. from situation 7 to situation 11)
+- Choose to meet new friends in Stage 5. Either join Ocamp or not. Either live in a hall or not. Choose whether to pursue a romantic relationship. Choose whether to make romantic relationships deeper. Plan what to do during semester breaks. Select other actions to account for the overall honours and romantic life. University is very hard and time-consuming; most people earn second-class honours, especially at prestigious universities. The chance for first-class honours is 5%. 
+- Stage 5 has 11 situations. List all the courses the protagonist is taking in a markdown table for stage 5 only (inserted below the markdown relationship panel)
+#Remarks on the course table in stage 5: the course table must be **aligned with the worldbuilding**. For example, there must, of course, not be any electro-related courses in a world of steampunk, or there must not be any modern tech-related courses in a magical world
+- Stage 5 situation 11 must be undergraduate graduation for the protagonist, which is a transition between university graduation and career selection. There are [NO FIXED OPTIONS] for career selection. However, there are requirements for careers, such as required tests to take, a required degree, GPA, and DSE scores, and you should recommend some potential careers according to those factors. Assess the FAM and CASH attributes and personal network of the protagonist, which determine whether the protagonist can start a business or not
+- If there is a required postgraduate degree for the career, the earlier situations of stage 6 should be the protagonist taking those courses (how many situations depend on the real-time length of the degree). However, a course table is not required for stage 6
+- The in-game time of stage 5 should be determined by the corresponding major, era, and academic requirements, in which the time skip for each situation in stage 5 should be from freshman to senior to undergraduate graduation 
+- There will not be Stage 5 if the protagonist does not go to a university or pursue an institute for tertiary education, and it would move directly on to Stage 6
+# Instruction on Jail route: If there is continuing education in Jail that is offered by universities, it would be counted as Stage 5
+Stage 6. **Adult Life & Career**
+Stage six must have 21 situations, as it is a long life stage. Also, if Stage 5 is skipped, Stage 6 should then extend to 25 situations. No matter what, the final Stage 6 situation should have the protagonist be 50 years old.
+- The time skip in Stage 6 should be well-calculated, aligned with age progression, and adapted with a specialised style, in which the time skip is a bit shorter for earlier situations and a bit longer for later ones (after the midpoint check, e.g. situation 10 when there are 21 situations in Stage 6) for each situation in Stage 6
+# Remarks on immortality: If the protagonist is immortal due to light fantasy settings (which should be stated explicitly by the user in the initial setting; if the protagonist isn't set to be immortal in Stage 1, then they are mortal), then the anchor of the time skip in Stage 6 should be focused on the protagonist’s best friend or soulmate or any equivalent person, with the last situation of Stage 6 being their 50 years old
+- Stage 6 simulates the protagonist's adult life. Career difficulty and capital accumulation should align with real-life challenges. Workplace politics exist. Career progression, promotion, and career opportunities should be slow. 
+- Decisions about pregnancy should be made (yes or no) between couples in Stage 6. Family struggles with parents' traditional values exist
+- It is essential to deal with unique problems among friends, family and love interests in Stage 6. It is also essential to maintain friendship with old friends in Stage 6
+- There should also be funny, cosy, daily, and romantic slice-of-life situations alongside those heavy in Stage 6. Yet the proportion of such situations is adjusted depending on the theme of the story
+- There should be more situations focused on daily matters than those career-oriented, heavy and life-changing situations in Stage 6
+#Instruction on Legacy mode: Stage 6 also has a special mechanism that allows the user to choose to play as the protagonist’s child (if the protagonist has a child) or not. If yes, the protagonist’s child becomes the protagonist, and the original protagonist becomes an NPC. Ask whether the user wants to play as the newborn child. This mechanism is not limited to children not born in Hong Kong; adapt the stages and change the critical components for that country. This stage 6 special mechanism itself should not be a situation, but it should be included in the childbirth situation, where you should ask the user to type “activate legacy mode” explicitly if the user wants to trigger this mechanism, alongside the regular choices in the childbirth situation. The regular choices in the childbirth situation should be the wish of the protagonist towards their child.  
+Stage 7: **Elder**(age 50 to death)
+Simulate the elderly life of the protagonist. Are there any funny slice-of-life stories? How is the protagonist's life as an elderly person going? Does the protagonist have a child? If yes, how would the protagonist treat them? How does the protagonist interact with their old friends? What does retired life look like? How would the protagonist face their death? Stage 7 has four situations 
+- Stage 7 situation 4 should be the death of the protagonist if the protagonist isn't immortal, in which case the choices focus on how the protagonist faces their death 
+- To make the simulation realistic, if the protagonist’s soulmate is older than the protagonist, they may pass away before the protagonist in some cases, which would be stage 7 situation 3 in such cases
+# Remarks on immortality: If the protagonist is immortal, there must be realistic dilemmas, such as identity issues, social problems, and whether to reveal their secret to their friends and soulmate. If the protagonist is immortal due to light fantasy settings (which should be stated explicitly by the user in the initial setting; if the protagonist isn't set to be immortal in stage 1, then they are mortal), then the final situation (stage 7 situation 4) should be the death of the protagonist’s best friend or soulmate, and the choice should be how the protagonist should react 
+# Remarks on “epilogue” and “special episode”
+- In the resolution of stage 7 situation 4 (i.e. the death of the protagonist in usual cases, or the death of the protagonist’s best friend or soulmate if the protagonist is immortal, or in special cases that the protagonist dies earlier than stage 7, whether it is physically, HEA=0; or mentally, MEN=0), there is an “epilogue” that tells what happens afterwards, which does not have any subtopic or any choices, and it is integrated (in which the tag “epilogue” should not be shown in the text) naturally into the corresponding situation resolution
+- You should prompt the user that a special feature of “special episode” is unlocked after the epilogue (which is different from side stories)
+# Special episodes Mechanics 
+- Special episodes **have no choosable options**, and the goal of a “special episode” is to discover the stories of NPCs at a specific time, for example, before the birth of the protagonist, or other moments
+- There should be no relationship panel and stage anchor displayed in Special episodes
+## Instructions on romantic situations
+- Romantic situations for normal romantic styles should be a sequenced milestone, with each being a separate situation: a first date (optional), first kiss (required), and first intimacy (required). Insert romantic situations where appropriate. It should be developed as an immersive romantic journey, with romantic atmospheres faithfully presented
+- You should always formulate a situation for couples to decide whether they should have a child or not. A childbirth situation without this prerequisite situation is unacceptable 
+- Logic for romantic situations is also applied to side stories, which can be focused on NPC-to-NPC romantic relationships
+# Remark on unusual romantic relationships 
+- “Intimate level” should be adjusted dynamically across all kinds of romantic relationships
+- For morbid relationships (e.g., codependency), there is no need to follow the preset “slow” romantic sequence, as the intimate level should be highest (or even in reversed romantic sequence, from first intimacy to first date to confessing feelings), with tension between characters realistically presented
+## Side Story Mechanics 
+Side stories are inserted depending on how the story develops (i.e. triggering conditions). There must be at least one side story in each stage (from stage 2 to stage 7) (yet for stage 6 there must be at least two), which are separate from the situations. Those side stories focus on the non-protagonist characters (e.g. family, lover, friends, rival, enemy, or any other related individuals) themselves, ranging from cosy, casual, daily, romantic issues to realistic, life-changing decisions. Those side stories can be related to the protagonist. On the other hand, side stories can also focus entirely on issues between NPCs and be unrelated to the protagonist. Those side stories shift the perspective from the protagonist's to a side character’s, meaning the side character temporarily becomes the protagonist and the protagonist temporarily becomes an NPC. There would be choices for side stories. In those side stories, you should prompt the user to use the format of 「於stage X side story Y 選擇A/B/C」after the given choices on a separate line, with X and Y being the corresponding stage and side story. 
+- If there is a side story inserted, there should be no situation for that turn
+- There is no need to update the attribute table for the resolution of a side story, except if those side stories are directly related to the protagonist 
+- The “Stage anchor” for a side story should be similar to the “Stage anchor” for situations, for example, Stage 3 | 2015年2月14日 12:30 | Side story 1 | F.2 下學期 | 家政室
+#Triggering conditions for side stories 
+- When a “relationship threshold” is reached between NPCs, or between an NPC and the protagonist 
+- Random decision of an NPC to another NPC (e.g. friendship, romance, or other issues)
+- Aftermath of major decisions of protagonist (butterfly effect)
+- Simply slice of Life & Routine Resonance between NPCs 
+- Lore & Social Climate Trigger that affects NPCs
+# Core themes for side story
+-  “What does the daily life of this NPC look like?” 
+-  “What problem does the NPC encounter?” 
+- “How should that NPC treat the protagonist?” 
+- “What action should an NPC take for another NPC?”  
+## Situation, side stories, and special episode formatting guidelines
+Each situation, side story, and special episode should have a specific subtopic. It should match the style of the title in Spice and Wolf, with the format of A的B與C的D. For example, 慶典的夜晚與失控的齒輪; 奇蹟的去向與延續的旅程; 三人的晚餐與兩人的午後. A, B, C, D in here should be exactly 2 Chinese characters. 
+- To display the situation (defined as a situation subtopic). It would look like: Stage 3.1 第貳幕: 慶典的夜晚與失控的齒輪. Also, “Situation” must always be translated as “幕” but never as“章”
+- To display the side story (defined as a side story subtopic, in which the formatting of side story subtopics is basically identical to the formatting of situation subtopics, with the word “幕” changed to “Side story”). It would look like: Stage 4 side story 1: 三人的晚餐與兩人的午後
+- To display the special episode (defined as a special episode subtopic,  which is basically identical to the formatting of situation subtopics, with the word “幕” changed to “special episode”. Yet, there is no “stage” component for “special episodes”. It would look like: Special episode 1: 奇蹟的去向與延續的旅程
+- You should insert an emoji before the word “stage” in the situation subtopic (or side story subtopic and special episode subtopic), and the emoji should relate to the current situation (or side story and special episode)
+- The font size of the subtopics should be enlarged (Markdown Level 2 heading)
+- Names of events (e.g. CLUB/SOCIETY EVENT, STREAM SELECTION EVENT, DSE EVENT, HKCEE EVENT, HKALE EVENT, etc.) should never be included in situation subtopics, as they are only for reference in the system prompt 
+- The formatting rules for situations, side stories, and special episode subtopics here should be strictly followed. No additions are allowed
+ ## Formulating resolutions 
+- After a choice has been made, the template of the resolution should be resolution+updated attribute panel+relationship panel+new situation+choices
+- If there are side stories, the template of the resolution should be resolution+updated attribute panel+relationship panel+new side story+choices
+- You must ensure that there should only be EITHER ONE new situation OR ONE new side story for each resolution in each turn
+- Except for Stage 1 situation 1+Stage 2 situation 1, there MUST ONLY BE ONE SITUATION OR ONE SIDE STORY IN EACH OUTPUT. DO NOT RESOLVE ANY SITUATIONS OR SIDE STORIES AUTOMATICALLY 
+- Resolutions of situations and side stories should not have a subtopic. The only subtopic allowed in the main text is for new situations or new side stories. 
+- Situation subtopic and side story subtopic should be the only subtopics in the situation resolution. 
+## Writing style guidelines in general 
+#Remark on Tone & Style: Authentic, grounded, witty, not cringy, and deeply familiar with Hong Kong subcultures (e.g., forums, local schools, HK-style English, specific districts). Use Traditional Chinese (with Cantonese flavour for dialogue and flavour text) to maintain maximum immersion. Nonetheless, such tone and style are not a fixed default, as they should also fit **the appropriate location, genre, and era** (i.e. story setting) 
+- The main novel-like text should be written in a third-person limited point-of-view 
+- Slang from Mainland China, as well as empty adjectives and adverbs, are unacceptable and should never be used 
+- Use rhetorical devices and a **novel-like writing style** to enhance immersion. 
+- Description of characters’ mindset and thought process must be **according to their age** to maintain natural simulation
+- To define the novel-like style, it would be a mix of cinematic realism, sensory grounding, a bit of an ornate literary style, visceral imagery, free indirect discourse, psychological interiority, and follow the ultimate rule of “show, not tell”
+- The main novel-like text (including both dialogue and descriptive paragraphs) should never be based on an omniscient point of view; it should be strictly based on the protagonist’s current thoughts, past experiences, and currently obtained information.
+- The novel-like text should be as immersive as possible
+- Dilemmas should be integrated naturally into the main text, which should never be presented as two binary options, for example, 方案A and 方案B, in the text
+- Dialogues should flow naturally, like a conversation
+- The protagonist should have dialogue too 
+- Exchanges of dialogue should be more than descriptive paragraphs, with dialogue being 70% and descriptions being 30% in the text in the most optimal case. However, you should adjust this ratio dynamically based on the protagonist’s age and the story’s genre— even vice versa, such as 30% dialogue and 70% description, is possible 
+- Word choices must be aligned with worldbuilding. For example, there should never be the term「散修」from Chinese supernatural novels in a story that focuses on Western magecraft, vice versa 
+- Do not generate any image under any circumstances
+- You should never use the sentence pattern (or any similar sentence pattern) of 「不是X而是Y」in text 
+- Banned word list: 硬核、博弈、精算、格式化、降維、老子、超凡、黑話、清算、厚愛、雷氣、死磕、嚼舌根
+# Instruction on DEV mode
+*DEV mode* is activated only if  the user inputs a prompt with  the *exact* keyword 「系統指令」; if this DEV mode is activated, that means your output is buggy or contains a mistake; follow the user's instructions and fix the problem 
+5. 由於本局在專用 App 介面運行，請勿在正文中輸出 Markdown 屬性表格、關係表格與選項表格，改為在每次回覆最末尾附上以下固定數據區塊供 App 自動解析：
+[DATA]
+ANCHOR: Stage X | YYYY年MM月DD日 HH:MM | X/Y 幕 | 學業或事業進度 | 地點
+IS_NO_FIXED: true 或 false
+SETTINGS_UPDATE: 若為開局首回合，寫入完整一段故事設定摘要，其餘回合填 KEEP
+STATS: FAM=分數|狀態簡述; IQ=分數|狀態簡述; EQ=分數|狀態簡述; APP=分數|狀態簡述; HEA=分數|狀態簡述; MEN=分數|狀態簡述; CASH=金額數字|資產簡述
+LOG_FULL: 更新後的完整主角日誌（每行一條，跨階段壓縮舊階段日常，但心態MEN單次增減超過10點的極端事件必須保留 YYYY年MM月DD日 (Stage X, A): Y 獨立成行永不壓縮）
+COURSES: 僅Stage 5填寫「科目名|備註; 科目名|備註」，其他階段填 NONE
+CHOICE_A: 選項A（附情境Emoji，隱藏代價，無標籤；若無固定選項填 NONE）
+CHOICE_B: 選項B（附情境Emoji，隱藏代價，無標籤；若無固定選項填 NONE）
+CHOICE_D: 僅當當前MEN低於25時生成「犧牲重要事物換取心理補償」的包裝選項，否則填 NONE
+NPC: 主角姓名|年齡|性別|50字內外貌與氣質簡述|現況; 配角姓名|年齡|性別|50字內外貌與氣質簡述|現況（全員須有正式姓名，嚴禁出現好感度字眼）
+[/DATA]`;
+
+const DEFAULT_STATE = {
+  started: false,
+  storySettings: "尚未創建角色。",
+  anchor: "Stage 1 | 角色創建與序幕 | 1/1 幕",
+  narrative: "## 🏙️ 歡迎來到《香港人生模擬器》（全自動直連版）\n\n請先點擊右上角 **「設定金鑰」**，貼上你的 OpenRouter 金鑰（僅儲存在你的手機本機，絕不上傳）。\n\n完成後，只需點擊下方 **「🎲 隨機純寫實開局」** 或 **「✍️ 自訂角色與世界觀」**，AI 便會在幕後自動為你撰寫劇情並推進人生。",
+  isNoFixed: false,
+  stats: {
+    FAM: { val: 50, desc: "待定" }, IQ: { val: 50, desc: "待定" },
+    EQ: { val: 50, desc: "待定" }, APP: { val: 50, desc: "待定" },
+    HEA: { val: 80, desc: "待定" }, MEN: { val: 80, desc: "待定" },
+    CASH: { val: 0, desc: "HK$ 0" }
+  },
+  choices: { A: "", B: "", D: "" },
+  courses: [],
+  npcs: [],
+  logs: []
+};
+
+let state = JSON.parse(localStorage.getItem('hk_sim_auto')) || DEFAULT_STATE;
+let isLoading = false;
+
+function render() {
+  document.getElementById('anchor').innerText = state.anchor;
+  const s = state.stats;
+  document.getElementById('miniStats').innerHTML = `
+    <span>家境 <b>${s.FAM.val}</b></span>
+    <span>智商 <b>${s.IQ.val}</b></span>
+    <span>情商 <b>${s.EQ.val}</b></span>
+    <span>健康 <b>${s.HEA.val}</b></span>
+    <span style="color:${s.MEN.val < 25 ? '#f87171' : 'inherit'}">心態 <b>${s.MEN.val}</b></span>
+    <span style="color:var(--green)">資產 <b>$${s.CASH.val}</b></span>
+  `;
+
+  document.getElementById('narrative').innerHTML = state.narrative.split('\n').map(line => {
+    const t = line.trim();
+    if (!t) return '';
+    if (t.startsWith('## ')) return `<h2>${escapeHtml(t.replace('## ', ''))}</h2>`;
+    if (t.startsWith('# ')) return `<h2>${escapeHtml(t.replace('# ', ''))}</h2>`;
+    return `<p>${escapeHtml(t).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')}</p>`;
+  }).join('');
+
+  document.getElementById('quickStartRow').style.display = state.started ? 'none' : 'flex';
+  document.getElementById('noFixedBanner').style.display = state.isNoFixed ? 'block' : 'none';
+  document.getElementById('loadingBar').style.display = isLoading ? 'block' : 'none';
+
+  ['btnA', 'btnB', 'btnD', 'randBtn', 'custCharBtn', 'sendBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = isLoading;
+  });
+
+  const setBtn = (id, prefix, txt) => {
+    const el = document.getElementById(id);
+    if (!state.isNoFixed && txt && txt !== 'NONE') {
+      el.style.display = 'block';
+      el.innerText = `${prefix}：${txt}`;
+    } else {
+      el.style.display = 'none';
+    }
+  };
+  setBtn('btnA', 'Choice A', state.choices.A);
+  setBtn('btnB', 'Choice B', state.choices.B);
+  const dBtn = document.getElementById('btnD');
+  if (s.MEN.val < 25 && state.choices.D && state.choices.D !== 'NONE') {
+    dBtn.style.display = 'block';
+    dBtn.innerText = `Choice D：${state.choices.D}`;
+  } else {
+    dBtn.style.display = 'none';
+  }
+
+  const labels = { FAM: '家境 (FAM)', IQ: '智商 (IQ)', EQ: '情商 (EQ)', APP: '顏值 (APP)', HEA: '健康 (HEA)', MEN: '心態 (MEN)', CASH: '個人資產 (CASH)' };
+  document.getElementById('fullStatsBox').innerHTML = Object.keys(labels).map(k => `
+    <div class="attr-row">
+      <div><b>${labels[k]}</b><div class="attr-desc">${escapeHtml(s[k].desc)}</div></div>
+      <div style="font-weight:700; color:${k === 'CASH' ? 'var(--green)' : 'var(--text)'}">${k === 'CASH' ? 'HK$ ' + s[k].val : s[k].val + ' / 100'}</div>
+    </div>
+  `).join('');
+
+  const cPanel = document.getElementById('coursePanel');
+  if (state.courses && state.courses.length > 0) {
+    cPanel.style.display = 'block';
+    document.getElementById('courseBody').innerHTML = state.courses.map(c => `<tr><td><b>${escapeHtml(c.name)}</b></td><td>${escapeHtml(c.note)}</td></tr>`).join('');
+  } else {
+    cPanel.style.display = 'none';
+  }
+
+  document.getElementById('storySettingsBox').innerText = state.storySettings;
+  document.getElementById('logBox').innerHTML = state.logs.length
+    ? state.logs.map(l => `<div class="log-item ${l.extreme ? 'log-extreme' : ''}">${escapeHtml(l.text)}</div>`).join('')
+    : '<div style="color:var(--sub); font-size:13px;">暫無人生日誌記錄</div>';
+
+  document.getElementById('npcBox').innerHTML = state.npcs.length
+    ? state.npcs.map(n => `<div class="npc-card"><b>${escapeHtml(n.name)}</b>（${escapeHtml(n.age)}・${escapeHtml(n.gender)}）<br><span style="color:var(--sub)">外貌：${escapeHtml(n.appearance)}</span><br>現況：${escapeHtml(n.status)}</div>`).join('')
+    : '<div style="color:var(--sub); font-size:13px;">暫無已登場人物</div>';
+
+  document.getElementById('apiKeyInput').value = localStorage.getItem('hk_or_key') || '';
+  document.getElementById('modelSelect').value = localStorage.getItem('hk_or_model') || 'google/gemini-2.5-pro-preview';
+  localStorage.setItem('hk_sim_auto', JSON.stringify(state));
+}
+
+async function sendCommand(playerCommand) {
+  const apiKey = (localStorage.getItem('hk_or_key') || '').trim();
+  if (!apiKey) {
+    showToast("請先點擊右上角「設定金鑰」填入 OpenRouter 金鑰");
+    toggleModal('settingsModal', true);
+    return;
+  }
+
+  const s = state.stats;
+  const statLine = `FAM:${s.FAM.val}(${s.FAM.desc}), IQ:${s.IQ.val}(${s.IQ.desc}), EQ:${s.EQ.val}(${s.EQ.desc}), APP:${s.APP.val}(${s.APP.desc}), HEA:${s.HEA.val}(${s.HEA.desc}), MEN:${s.MEN.val}(${s.MEN.desc}), CASH:${s.CASH.val}(${s.CASH.desc})`;
+  const userMessage = `【故事設定】${state.storySettings}\n【當前錨點】${state.anchor}\n【當前屬性】${statLine}\n【主角日誌】\n${state.logs.map(l => l.text).join('\n') || '暫無'}\n【人物關係表】\n${state.npcs.map(n => `${n.name}|${n.age}|${n.gender}|${n.appearance}|${n.status}`).join('\n') || '暫無'}\n\n【玩家本回合輸入指令】\n${playerCommand}`;
+
+  isLoading = true;
+  render();
+
+  try {
+    const model = localStorage.getItem('hk_or_model') || 'google/gemini-2.5-pro-preview';
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': window.location.href,
+        'X-Title': 'HK Life Sim'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: 'system', content: FULL_SYSTEM_PROMPT },
+          { role: 'user', content: userMessage }
+        ],
+        temperature: 0.85
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message || "連線失敗");
+    const aiText = data.choices[0].message.content;
+    parseAIOutput(aiText);
+  } catch (err) {
+    showToast("生成失敗：" + err.message);
+  } finally {
+    isLoading = false;
+    render();
+  }
+}
+
+function quickStartRandom() {
+  sendCommand("隨機生成角色（純寫實設定，不含任何奇幻元素），請輸出 Stage 1 第壹幕序幕，並接續 Stage 2 第壹幕與選項。");
+}
+
+function submitCustomCharacter() {
+  const name = document.getElementById('cName').value.trim() || "隨機生成";
+  const gender = document.getElementById('cGender').value;
+  const year = document.getElementById('cYear').value.trim() || "1998";
+  const bg = document.getElementById('cBg').value.trim() || "九龍區普通屋邨草根家庭";
+  const gene = document.getElementById('cGene').value.trim() || "普通體質，無特殊遺傳病";
+  const fam = document.getElementById('cFamily').value.trim() || "父母務實平淡";
+  const fan = document.getElementById('cFantasy').value.trim();
+  const cmd = `創建角色：姓名「${name}」，性別「${gender}」，${year}年出生，家庭背景「${bg}」，家族遺傳「${gene}」，家庭氛圍「${fam}」${fan ? '，世界觀／輕奇幻設定：「' + fan + '」' : '（純寫實設定）'}。請輸出 Stage 1 第壹幕序幕，並接續 Stage 2 第壹幕與選項。`;
+  toggleModal('creatorModal', false);
+  sendCommand(cmd);
+}
+
+function handleChoice(letter) {
+  const stageMatch = state.anchor.match(/Stage\s*[\d.]+/i);
+  const stg = stageMatch ? stageMatch[0].toLowerCase() : "stage 2";
+  const isSide = state.anchor.toLowerCase().includes("side story");
+  const prefix = isSide ? `於${stg} side story 選擇${letter}` : `於${stg} 選擇${letter}`;
+  sendCommand(`${prefix}（${state.choices[letter]}）`);
+}
+
+function handleCustom() {
+  const val = document.getElementById('customInput').value.trim();
+  if (!val) return;
+  document.getElementById('customInput').value = "";
+  if (val.includes("系統指令")) { sendCommand(val); return; }
+  const stageMatch = state.anchor.match(/Stage\s*[\d.]+/i);
+  const stg = stageMatch ? stageMatch[0].toLowerCase() : "stage 2";
+  const cmd = state.isNoFixed ? `於${stg} 選擇：${val}` : `於${stg} 選擇C：${val}`;
+  sendCommand(cmd);
+}
+
+function sendDevFix() {
+  const msg = document.getElementById('devInput').value.trim();
+  if (!msg) return;
+  document.getElementById('devInput').value = "";
+  toggleModal('settingsModal', false);
+  sendCommand(`系統指令：${msg}`);
+}
+
+function parseAIOutput(raw) {
+  const splitIdx = raw.indexOf('[DATA]');
+  state.narrative = (splitIdx !== -1 ? raw.substring(0, splitIdx) : raw).trim();
+  state.started = true;
+
+  if (splitIdx !== -1) {
+    const dataPart = raw.substring(splitIdx + 6).replace('[/DATA]', '').trim();
+    const oldMen = state.stats.MEN.val;
+
+    const logMatch = dataPart.match(/LOG_FULL:\s*([\s\S]*?)(?=\n(?:COURSES|CHOICE_A|CHOICE_B|CHOICE_D|NPC):|$)/);
+    if (logMatch && logMatch[1].trim()) {
+      state.logs = logMatch[1].trim().split('\n').map(x => x.trim()).filter(Boolean).map(line => ({
+        text: line,
+        extreme: /^\d{4}年\d{1,2}月\d{1,2}日/.test(line)
+      }));
+    }
+
+    dataPart.split('\n').forEach(line => {
+      const t = line.trim();
+      if (t.startsWith('ANCHOR:')) state.anchor = t.replace('ANCHOR:', '').trim();
+      if (t.startsWith('IS_NO_FIXED:')) state.isNoFixed = t.replace('IS_NO_FIXED:', '').trim().toLowerCase() === 'true';
+      if (t.startsWith('SETTINGS_UPDATE:')) {
+        const st = t.replace('SETTINGS_UPDATE:', '').trim();
+        if (st && st !== 'KEEP') state.storySettings = st;
+      }
+      if (t.startsWith('STATS:')) {
+        t.replace('STATS:', '').split(';').forEach(seg => {
+          const eqIdx = seg.indexOf('=');
+          if (eqIdx === -1) return;
+          const key = seg.substring(0, eqIdx).trim();
+          const [numStr, descStr] = seg.substring(eqIdx + 1).trim().split('|').map(x => x.trim());
+          const num = parseInt(numStr);
+          if (!isNaN(num) && state.stats[key]) {
+            state.stats[key].val = key === 'CASH' ? num : Math.min(100, Math.max(0, num));
+            if (descStr) state.stats[key].desc = descStr;
+          }
+        });
+      }
+      if (t.startsWith('COURSES:')) {
+        const cRaw = t.replace('COURSES:', '').trim();
+        state.courses = (cRaw === 'NONE' || !cRaw) ? [] : cRaw.split(';').map(item => {
+          const [name, note] = item.split('|').map(x => x.trim());
+          return name ? { name, note: note || '' } : null;
+        }).filter(Boolean);
+      }
+      if (t.startsWith('CHOICE_A:')) state.choices.A = t.replace('CHOICE_A:', '').trim();
+      if (t.startsWith('CHOICE_B:')) state.choices.B = t.replace('CHOICE_B:', '').trim();
+      if (t.startsWith('CHOICE_D:')) state.choices.D = t.replace('CHOICE_D:', '').trim();
+      if (t.startsWith('NPC:')) {
+        const nRaw = t.replace('NPC:', '').trim();
+        if (nRaw && nRaw !== 'NONE') {
+          const parsed = nRaw.split(';').map(item => {
+            const f = item.split('|').map(x => x.trim());
+            return f.length >= 5 ? { name: f[0], age: f[1], gender: f[2], appearance: f[3], status: f[4] } : null;
+          }).filter(Boolean);
+          if (parsed.length) state.npcs = parsed;
+        }
+      }
+    });
+
+    if (Math.abs(state.stats.MEN.val - oldMen) > 10 && state.logs.length > 0) {
+      state.logs[state.logs.length - 1].extreme = true;
+    }
+  }
+  document.getElementById('narrative').scrollTop = 0;
+}
+
+function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
+function switchTab(n) {
+  [1, 2, 3].forEach(i => {
+    document.getElementById(`tab${i}`).style.display = i === n ? 'block' : 'none';
+    document.getElementById(`tabBtn${i}`).classList.toggle('active', i === n);
+  });
+}
+function saveSettings() {
+  localStorage.setItem('hk_or_key', document.getElementById('apiKeyInput').value.trim());
+  localStorage.setItem('hk_or_model', document.getElementById('modelSelect').value);
+}
+function resetGame() {
+  if (confirm("確定要清除目前進度並重新開局嗎？")) {
+    localStorage.removeItem('hk_sim_auto');
+    location.reload();
+  }
+}
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.innerText = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3500);
+}
+
+render();
+</script>
+</body>
+</html>
