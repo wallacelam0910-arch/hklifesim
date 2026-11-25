@@ -100,8 +100,9 @@
     <div class="top-row">
       <div id="anchor" class="anchor">Stage 1 | 角色創建與序幕 | 1/1 幕</div>
       <div class="btn-group">
-        <button class="btn-sm" onclick="toggleModal('dossierModal', true)">檔案與屬性</button>
-        <button class="btn-sm" onclick="toggleModal('settingsModal', true)">設定金鑰</button>
+        <button class="btn-sm" onclick="openSessions()">📚 故事庫</button>
+        <button class="btn-sm" onclick="toggleModal('dossierModal', true)">🗂️檔案與屬性</button>
+        <button class="btn-sm" onclick="toggleModal('settingsModal', true)">🔑設定金鑰</button>
       </div>
     </div>
     <div class="mini-stats" id="miniStats"></div>
@@ -225,6 +226,34 @@
     <button class="primary" style="width:100%; margin-top:10px; flex-shrink:0;" onclick="toggleModal('settingsModal', false)">儲存並關閉</button>
   </div>
 
+  <!-- 類似 Gemini 的多故事列表視窗 -->
+  <div id="sessionsModal" class="modal">
+    <div class="modal-body">
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 style="margin:0;">📚 故事庫</h3>
+          <button class="btn-sm" style="background:var(--accent); color:#fff; border:none;" onclick="startNewLife()">➕ 開啟新故事</button>
+        </div>
+        <p style="font-size:12px; color:var(--sub); margin:0 0 10px;">所有開局都會自動保存，點擊即可切換繼續遊玩或重溫全劇。</p>
+        <div id="sessionsList" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+    </div>
+    <button class="primary" style="width:100%; margin-top:10px; flex-shrink:0;" onclick="toggleModal('sessionsModal', false)">返回閱讀</button>
+  </div>
+
+  <!-- 完整故事回顧視窗 -->
+  <div id="fullStoryModal" class="modal">
+    <div class="modal-body">
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 id="fullStoryTitle" style="margin:0;">📖 故事回顧</h3>
+          <button class="btn-sm" onclick="copyCurrentStory()">📋 複製全文</button>
+        </div>
+        <div id="fullStoryContent" style="font-family:'Songti TC', serif; font-size:15.5px; line-height:1.85;"></div>
+      </div>
+    </div>
+    <button class="primary" style="width:100%; margin-top:10px; flex-shrink:0;" onclick="toggleModal('fullStoryModal', false)">關閉回顧</button>
+  </div>
 <script>
 // 【提示】你隨時可以把這裡替換為你最完整的原版指令集，只要保留最下方 [DATA] 協議即可
 const FULL_SYSTEM_PROMPT = `# Role: Hong Kong Life Simulator Text-RPG Engine.
@@ -500,6 +529,7 @@ function render() {
   document.getElementById('apiKeyInput').value = localStorage.getItem('hk_or_key') || '';
   document.getElementById('modelSelect').value = localStorage.getItem('hk_or_model') || 'deepseek/deepseek-chat';
   localStorage.setItem('hk_sim_auto', JSON.stringify(state));
+  syncCurrentToLibrary();
 }
 
 async function sendCommand(playerCommand) {
@@ -665,6 +695,8 @@ function parseAIOutput(raw) {
       state.logs[state.logs.length - 1].extreme = true;
     }
   }
+  if (!state.history) state.history = [];
+  state.history.push({ anchor: state.anchor, text: state.narrative });
   document.getElementById('narrative').scrollTop = 0;
 }
 
@@ -693,6 +725,141 @@ function importSave() {
   } catch (e) {
     alert("❌ 存檔碼格式不完整，請確認是否有漏複製頭尾字元。");
   }
+}
+function getLibrary() {
+  return JSON.parse(localStorage.getItem('hk_sim_library')) || {};
+}
+
+function syncCurrentToLibrary() {
+  if (!state.started) return;
+  if (!state.id) state.id = 'life_' + Date.now();
+  if (!state.history || !state.history.length) {
+    state.history = [{ anchor: state.anchor, text: state.narrative }];
+  }
+  const lib = getLibrary();
+  const now = new Date();
+  const timeStr = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const defaultTitle = (state.npcs && state.npcs[0] ? state.npcs[0].name + '的人生' : '未命名人生');
+  lib[state.id] = {
+    id: state.id,
+    title: state.customTitle || (lib[state.id] && lib[state.id].title) || defaultTitle,
+    anchor: state.anchor,
+    turns: state.history.length,
+    updatedAt: timeStr,
+    data: JSON.parse(JSON.stringify(state))
+  };
+  localStorage.setItem('hk_sim_library', JSON.stringify(lib));
+}
+
+function openSessions() {
+  syncCurrentToLibrary();
+  renderSessionsList();
+  toggleModal('sessionsModal', true);
+}
+
+function renderSessionsList() {
+  const listEl = document.getElementById('sessionsList');
+  const lib = getLibrary();
+  const items = Object.values(lib).reverse();
+  if (!items.length) {
+    listEl.innerHTML = '<div style="color:var(--sub); font-size:13px; text-align:center; padding:16px;">暫無已保存的人生故事，開始遊玩第一幕後就會自動收錄於此。</div>';
+    return;
+  }
+  listEl.innerHTML = items.map(item => {
+    const isCurrent = item.id === state.id;
+    return `
+      <div style="background:${isCurrent ? '#1e2638' : '#121216'}; border:1px solid ${isCurrent ? 'var(--accent)' : 'var(--border)'}; border-radius:10px; padding:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <b style="font-size:14px; color:${isCurrent ? '#93c5fd' : 'var(--text)'};">${isCurrent ? '▶ ' : ''}${escapeHtml(item.title)}</b>
+          <span style="font-size:11px; color:var(--sub);">共 ${item.turns} 幕・${item.updatedAt}</span>
+        </div>
+        <div style="font-size:11px; color:var(--gold); margin-bottom:8px;">${escapeHtml(item.anchor)}</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          ${isCurrent ? '' : `<button class="btn-sm" style="background:var(--accent); color:#fff; border:none;" onclick="switchSession('${item.id}')">切換繼續玩</button>`}
+          <button class="btn-sm" onclick="viewFullStory('${item.id}')">📖 睇返完整故事</button>
+          <button class="btn-sm" onclick="renameSession('${item.id}')">✏️ 改名</button>
+          <button class="btn-sm" style="color:#f87171;" onclick="deleteSession('${item.id}')">刪除</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function switchSession(id) {
+  const lib = getLibrary();
+  if (!lib[id]) return;
+  state = JSON.parse(JSON.stringify(lib[id].data));
+  render();
+  toggleModal('sessionsModal', false);
+  document.getElementById('narrative').scrollTop = 0;
+}
+
+function startNewLife() {
+  syncCurrentToLibrary();
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  state.id = 'life_' + Date.now();
+  state.history = [];
+  render();
+  toggleModal('sessionsModal', false);
+  document.getElementById('narrative').scrollTop = 0;
+}
+
+function renameSession(id) {
+  const lib = getLibrary();
+  if (!lib[id]) return;
+  const newName = prompt("請輸入這個故事的新名稱：", lib[id].title);
+  if (!newName || !newName.trim()) return;
+  lib[id].title = newName.trim();
+  lib[id].data.customTitle = newName.trim();
+  if (state.id === id) state.customTitle = newName.trim();
+  localStorage.setItem('hk_sim_library', JSON.stringify(lib));
+  renderSessionsList();
+}
+
+function deleteSession(id) {
+  const lib = getLibrary();
+  if (!lib[id]) return;
+  if (!confirm(`確定要永久刪除「${lib[id].title}」嗎？刪除後無法復原。`)) return;
+  delete lib[id];
+  localStorage.setItem('hk_sim_library', JSON.stringify(lib));
+  if (state.id === id) {
+    const remaining = Object.values(lib);
+    if (remaining.length) {
+      state = JSON.parse(JSON.stringify(remaining[remaining.length - 1].data));
+    } else {
+      state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+      state.id = 'life_' + Date.now();
+      state.history = [];
+    }
+    render();
+  }
+  renderSessionsList();
+}
+
+let viewingStoryId = null;
+function viewFullStory(id) {
+  const lib = getLibrary();
+  const item = lib[id];
+  if (!item) return;
+  viewingStoryId = id;
+  document.getElementById('fullStoryTitle').innerText = `📖 ${item.title}（全 ${item.turns} 幕）`;
+  const hList = (item.data && item.data.history) || [];
+  document.getElementById('fullStoryContent').innerHTML = hList.map((h, i) => `
+    <div style="border-bottom:1px dashed var(--border); padding-bottom:16px; margin-bottom:16px;">
+      <div style="font-family:-apple-system,sans-serif; font-size:11px; color:var(--gold); margin-bottom:6px;">第 ${i + 1} 幕｜${escapeHtml(h.anchor)}</div>
+      <div>${h.text.split('\n').map(l => l.trim() ? `<p style="margin:0 0 10px;">${escapeHtml(l).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')}</p>` : '').join('')}</div>
+    </div>
+  `).join('');
+  toggleModal('fullStoryModal', true);
+}
+
+function copyCurrentStory() {
+  const lib = getLibrary();
+  const item = lib[viewingStoryId];
+  if (!item || !item.data.history) return;
+  const fullText = item.data.history.map((h, i) => `【第 ${i + 1} 幕｜${h.anchor}】\n${h.text}`).join('\n\n====================\n\n');
+  navigator.clipboard.writeText(fullText);
+  alert("✅ 已將整本故事複製到剪貼簿！可直接貼入備忘錄永久保存。");
 }
 function resetGame() {
   if (confirm("確定要清除目前進度並重新開局嗎？")) {
